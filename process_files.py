@@ -4,6 +4,7 @@ import time
 import re
 import logging
 import shutil
+import json
 import sys
 
 logging.basicConfig(
@@ -16,7 +17,9 @@ logging.basicConfig(
 
 
         
-def process_files(article_dir, file_list):
+def process_files():
+    article_dir = os.path.join("results", "articles")
+    file_list = os.listdir(article_dir)
     result_dir = os.path.join("results", "data")
     result_file_p = open(os.path.join(result_dir, "all_merged.txt"), "w", encoding="utf8")
 
@@ -30,6 +33,7 @@ def process_files(article_dir, file_list):
             continue
         file_p.close()
         found = re.findall(r'<p>.*?</p>', data, re.DOTALL)
+        article_name = filename.strip(".txt")
         result_file_p.write(f'---------- {filename} ----------\n')
 
         for f in found:
@@ -38,6 +42,37 @@ def process_files(article_dir, file_list):
         
         logging.info(f"parsing file {filename}")
     result_file_p.close()
+
+def parse_data():
+    result_dir = os.path.join("results", "data")
+    data_p = open(os.path.join(result_dir, "all_merged.txt"), "r", encoding="utf8")
+    data = data_p.read()
+    data = re.sub(r"<.*?>", "", data)
+    
+    #data = re.sub(r"</?[a-z]+>", "", data)
+    dictionary = {}
+    key = None
+    data_p.seek(0)
+    for line in data_p.readlines():
+        if len(re.findall("----------", line)) == 2:
+            title = line.replace("----------", "")
+            key = title
+            key = re.sub(r" |(\\n)|(.txt)","", key)
+            dictionary[key] = ""
+        elif key is not None:
+            dictionary[key] += line
+
+    
+    with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
+        json.dump(dictionary, outfile)
+        outfile.close()
+
+    # result = open(os.path.join("results", "data", "all_cleaned.txt"), "w", encoding="utf8")
+    # result.write(data)
+    
+
+
+
 
 if __name__ == "__main__":
 
@@ -48,10 +83,13 @@ if __name__ == "__main__":
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
 
-    article_dir = os.path.join("results", "articles")
-    file_list = os.listdir(article_dir)
 
-    process_files(article_dir, file_list)
+
+    #process_files()
+
+    #parse data
+    parse_data()
+
     
     end = time.time()
     print(f"Duration: {(end-start)/60} minutes")
