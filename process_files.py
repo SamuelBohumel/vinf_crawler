@@ -6,6 +6,14 @@ import logging
 import shutil
 import json
 import sys
+from rake_nltk import Rake
+import nltk
+import pandas as pd
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk  # Import Pillow
+# nltk.download('stopwords')
+# nltk.download('punkt')
 
 logging.basicConfig(
     format='%(asctime)s - %(message)s', 
@@ -15,8 +23,75 @@ logging.basicConfig(
     )
 
 
+def find_best_match(search_term, dictionary):
+    
+    for key, value in dictionary.items():
+        if search_term in key:
+            article = value['text']
+            sententes = article.split('.')
+            for sent in sententes:
+                if search_term in sent:
+                    return sent
 
+
+def search_keywords(dictionary, search_var, result_text):
+    search_term = search_var.get()
+    result_text.delete(1.0, tk.END)  # Clear previous results
+
+    result = find_best_match(search_term, dictionary)
+    result_text.insert(tk.END, result)
+    # with open('text_file.txt', 'r') as file:
+    #     for line in file:
+    #         if search_term in line:
         
+
+def create_GUI(dictionary):
+    app = tk.Tk()
+    app.title('Keyword Search App')
+
+    # Set default window size
+    app.geometry('800x600')
+
+    # Load and resize your logo
+    logo_image = Image.open('logo.png')  # Replace 'logo.png' with your image file
+    quantif = 0.5
+    logo_image = logo_image.resize((round(logo_image.width*quantif), 
+                                    round(logo_image.height*quantif)), 
+                                    Image.ANTIALIAS)  # Adjust the size as needed
+    logo = ImageTk.PhotoImage(logo_image)
+
+    # Create a label for the logo and use grid for centering
+    logo_label = ttk.Label(app, image=logo)
+    logo_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+
+    # Create a frame to center the search elements
+    frame = ttk.Frame(app)
+    frame.grid(row=1, column=0, columnspan=2)
+
+    logo_label = ttk.Label(app, image=logo, anchor='center')
+    logo_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+
+    search_label = ttk.Label(app, text='Enter search keyword:')
+    search_label.grid(row=1, column=0, padx=10, pady=(5, 0), sticky='w')
+
+    search_var = tk.StringVar()
+    search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(dictionary, search_var, result_text))
+    search_entry = ttk.Entry(app, textvariable=search_var)
+    search_entry.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
+
+    search_button = ttk.Button(app, text='Search', command=search_keywords)
+    search_button.grid(row=2, column=1, padx=(0, 10), pady=5, sticky='ew')
+
+    result_text = tk.Text(app, wrap=tk.WORD, height=10, width=40)
+    result_text.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+
+    # Column and row weights to make widgets expand correctly
+    app.columnconfigure(0, weight=1)
+    app.rowconfigure(3, weight=1)
+
+    app.mainloop()
+
+ 
 def process_files():
     article_dir = os.path.join("results", "articles")
     file_list = os.listdir(article_dir)
@@ -48,6 +123,8 @@ def parse_data():
     data_p = open(os.path.join(result_dir, "all_merged.txt"), "r", encoding="utf8")
     data = data_p.read()
     data = re.sub(r"<.*?>", "", data)
+
+    all_key_words = []
     
     #data = re.sub(r"</?[a-z]+>", "", data)
     dictionary = {}
@@ -58,10 +135,22 @@ def parse_data():
             title = line.replace("----------", "")
             key = title
             key = re.sub(r" |(\\n)|(.txt)","", key)
-            dictionary[key] = ""
+            key = key.replace('\n', '')
+            dictionary[key] = {
+                "text": "",
+                "keywords" :[]
+            }
         elif key is not None:
-            dictionary[key] += line
+            cleaned = re.sub(r"<.*?>", "", line)
+            cleaned = re.sub('"', "'", cleaned)
+            dictionary[key]['text'] += cleaned
 
+    for key, value in dictionary.items():
+        rake_nltk_var = Rake()
+        rake_nltk_var.extract_keywords_from_text(value['text'])
+        keyword_extracted = rake_nltk_var.get_ranked_phrases()
+        dictionary[key]['keywords'] = keyword_extracted
+        all_key_words.extend(keyword_extracted)
     
     with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
         json.dump(dictionary, outfile)
@@ -69,10 +158,11 @@ def parse_data():
 
     # result = open(os.path.join("results", "data", "all_cleaned.txt"), "w", encoding="utf8")
     # result.write(data)
+    keyword_df = pd.DataFrame(all_key_words, columns=['keyword'])
+    keyword_df = keyword_df.groupby('keyword').size().reset_index(name='count')
+    keyword_df.sort_values(by='count', ascending=False, inplace=True)
+    keyword_df.to_csv("keywords.csv", index=False)
     
-
-
-
 
 if __name__ == "__main__":
 
@@ -83,13 +173,14 @@ if __name__ == "__main__":
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
 
-
-
     #process_files()
 
-    #parse data
-    parse_data()
+    #parse_data()
 
+    file_p =  open(os.path.join("results", "data", "all_cleaned.json"), "r", encoding="utf8")
+    dictionary = json.load(file_p)
+
+    create_GUI(dictionary)
     
     end = time.time()
     print(f"Duration: {(end-start)/60} minutes")
