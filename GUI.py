@@ -46,7 +46,7 @@ search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(s
 search_entry = ttk.Entry(app, textvariable=search_var)
 search_entry.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
 
-search_button = ttk.Button(app, text='Search', command=search_keywords)
+search_button = ttk.Button(app, text='Next match', command=search_keywords)
 search_button.grid(row=2, column=1, padx=(0, 10), pady=5, sticky='ew')
 
 result_text = tk.Text(app, wrap=tk.WORD, height=10, width=40)

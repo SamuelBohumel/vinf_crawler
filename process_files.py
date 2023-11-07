@@ -31,21 +31,23 @@ def find_best_match(search_term, dictionary):
             sententes = article.split('.')
             for sent in sententes:
                 if search_term in sent:
-                    return sent
+                    return sent, article
+    return "",""
 
 
-def search_keywords(dictionary, search_var, result_text):
+def search_keywords(dictionary, search_var, result_text, result_article):
     search_term = search_var.get()
     result_text.delete(1.0, tk.END)  # Clear previous results
 
-    result = find_best_match(search_term, dictionary)
+    result, article = find_best_match(search_term, dictionary)
     result_text.insert(tk.END, result)
-    # with open('text_file.txt', 'r') as file:
-    #     for line in file:
-    #         if search_term in line:
-        
+    result_article.delete(1.0, tk.END)
+    result_article.insert(tk.END, article)
+
+
 
 def create_GUI(dictionary):
+    offset = 0
     app = tk.Tk()
     app.title('Keyword Search App')
 
@@ -75,15 +77,20 @@ def create_GUI(dictionary):
     search_label.grid(row=1, column=0, padx=10, pady=(5, 0), sticky='w')
 
     search_var = tk.StringVar()
-    search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(dictionary, search_var, result_text))
+    search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(dictionary, search_var, result_text, result_article))
     search_entry = ttk.Entry(app, textvariable=search_var)
     search_entry.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
 
-    search_button = ttk.Button(app, text='Search', command=search_keywords)
+    search_button = ttk.Button(app, text='Next match', command=lambda: search_keywords(dictionary, search_var, result_text, result_article))
     search_button.grid(row=2, column=1, padx=(0, 10), pady=5, sticky='ew')
 
     result_text = tk.Text(app, wrap=tk.WORD, height=10, width=40)
     result_text.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+
+    source_article = ttk.Label(app, text='Source article', anchor='center')
+    source_article.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
+    result_article = tk.Text(app, wrap=tk.WORD, height=10, width=40)
+    result_article.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky='nsew')
 
     # Column and row weights to make widgets expand correctly
     app.columnconfigure(0, weight=1)
@@ -143,7 +150,7 @@ def parse_data():
         elif key is not None:
             cleaned = re.sub(r"<.*?>", "", line)
             cleaned = re.sub('"', "'", cleaned)
-            dictionary[key]['text'] += cleaned
+            dictionary[key]['text'] += cleaned.lower()
 
     for key, value in dictionary.items():
         rake_nltk_var = Rake()
