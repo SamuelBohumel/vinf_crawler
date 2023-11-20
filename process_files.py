@@ -12,27 +12,51 @@ import pandas as pd
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk  # Import Pillow
+import wikipediaapi
+from bs4 import BeautifulSoup
+from time import sleep
 # nltk.download('stopwords')
 # nltk.download('punkt')
 
-logging.basicConfig(
-    format='%(asctime)s - %(message)s', 
-    #filename="log.log",
-    stream=sys.stdout,
-    level=logging.INFO
-    )
+# logging.basicConfig(
+#     format='%(asctime)s - %(message)s', 
+#     #filename="log.log",
+#     stream=sys.stdout,
+#     level=logging.INFO
+#     )
+
+def check_words_in_sentence(words, sentence):
+    correct = 0
+    for word in words:
+        if word in sentence:
+            correct += 1
+    if correct == len(words):
+        return True
+    return False
+
+
 
 
 def find_best_match(search_term, dictionary):
-    
-    for key, value in dictionary.items():
-        if search_term in key:
-            article = value['text']
-            sententes = article.split('.')
-            for sent in sententes:
-                if search_term in sent:
-                    return sent, article
-    return "",""
+    words = search_term.split(" ")
+    if " " not in search_term:
+        #try to find definiton:
+        for key, value in dictionary.items():
+            if search_term in key:
+                article = value['text']
+                sententes = article.split('.')
+                for sent in sententes:
+                    if f"{search_term} is " in sent:
+                        return sent, article
+    else:
+        for key, value in dictionary.items():
+            if search_term in key:
+                article = value['text']
+                sententes = article.split('.')
+                for sent in sententes:
+                    if check_words_in_sentence(words, sent):
+                        return sent, article
+        return "",""
 
 
 def search_keywords(dictionary, search_var, result_text, result_article):
@@ -125,6 +149,43 @@ def process_files():
         logging.info(f"parsing file {filename}")
     result_file_p.close()
 
+def get_wikipedia_table_info(keyword):
+    # Create a Wikipedia API object
+    wiki_wiki = wikipediaapi.Wikipedia(user_agent='Samuel B', 
+                                       language='en', 
+                                       extract_format=wikipediaapi.ExtractFormat.HTML)
+
+    # Fetch the page for the given keyword
+    page_py = wiki_wiki.page(keyword)
+
+    if not page_py.exists():
+        return {"error": "Page not found"}
+    
+    page_url = page_py.fullurl
+    content = requests.get(page_url).text
+
+    # Get the content of the Wikipedia page
+    # Use BeautifulSoup to parse the HTML content
+    soup = BeautifulSoup(content, 'html.parser')
+
+    # Find the first table in the page (you may need to adjust this based on your needs)
+    table = soup.find('table')
+
+    if not table:
+        return None
+
+    # Extract information from the table
+    table_info = {}
+    rows = table.find_all('tr')
+    for row in rows:
+        columns = row.find_all(['td', 'th'])
+        values = [col.get_text(strip=True) for col in columns]
+        if values:
+            # Assuming the first column is the key and the second column is the value
+            table_info[values[0].lower()] = values[1].lower() if len(values) > 1 else ""
+
+    return table_info
+
 def parse_data():
     result_dir = os.path.join("results", "data")
     data_p = open(os.path.join(result_dir, "all_merged.txt"), "r", encoding="utf8")
@@ -152,11 +213,19 @@ def parse_data():
             cleaned = re.sub('"', "'", cleaned)
             dictionary[key]['text'] += cleaned.lower()
 
+    counter = 0
     for key, value in dictionary.items():
+        print(f"processing {counter}/{len(dictionary.items())}")
+        counter += 1
         rake_nltk_var = Rake()
         rake_nltk_var.extract_keywords_from_text(value['text'])
         keyword_extracted = rake_nltk_var.get_ranked_phrases()
-        dictionary[key]['keywords'] = keyword_extracted
+        for keyword in list(set(keyword_extracted)):
+            result = get_wikipedia_table_info(keyword)
+            if result is not None:
+                dictionary[key][keyword] = result
+            sleep(0.01)
+        dictionary[key]['keywords'] = list(set(keyword_extracted))
         all_key_words.extend(keyword_extracted)
     
     with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
@@ -182,7 +251,7 @@ if __name__ == "__main__":
 
     #process_files()
 
-    #parse_data()
+    parse_data()
 
     file_p =  open(os.path.join("results", "data", "all_cleaned.json"), "r", encoding="utf8")
     dictionary = json.load(file_p)

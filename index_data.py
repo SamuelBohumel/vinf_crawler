@@ -16,10 +16,10 @@ def create_index(index_path, json_file):
         data = json.load(file)
 
     # Create an index
-    index_dir = NIOFSDirectory(Paths.get(index_path))
     analyzer = StandardAnalyzer()
     config = IndexWriterConfig(analyzer)
-    writer = IndexWriter(index_dir, config)
+    directory = NIOFSDirectory(Paths.get(index_path))
+    writer = IndexWriter(directory, config)
 
     # Define a field type for storing text
     text_field_type = FieldType()
@@ -27,14 +27,12 @@ def create_index(index_path, json_file):
     text_field_type.setTokenized(True)
 
 
-    # Index the data
     for doc_id, entry in enumerate(data):
         text = data[entry]['text']  
         doc = Document()
-        doc.add(Field("id", str(doc_id), text_field_type))
-        doc.add(Field("content", text, text_field_type))
+        doc.add(Field(entry, text, text_field_type))
         writer.addDocument(doc)
-        print(f"Added document with id: {str(doc_id)}")
+
 
     # Close the index writer
     writer.commit()
@@ -64,7 +62,7 @@ def search_index(index_path, query_str):
     for score_doc in top_docs.scoreDocs:
         doc_id = score_doc.doc
         doc = searcher.doc(doc_id)
-        print(f"Doc ID: {doc_id}, Content: {doc.get('content')}")
+        print(f"Doc ID: {doc_id}, content: {doc.get('content')}")
 
     # Close the reader
     reader.close()
