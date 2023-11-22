@@ -24,6 +24,7 @@ from time import sleep
 #     stream=sys.stdout,
 #     level=logging.INFO
 #     )
+# https://en.wikipedia.org/wiki/Astronomical_object
 
 def check_words_in_sentence(words, sentence):
     correct = 0
@@ -251,7 +252,24 @@ def parse_data():
     keyword_df = keyword_df.groupby('keyword').size().reset_index(name='count')
     keyword_df.sort_values(by='count', ascending=False, inplace=True)
     keyword_df.to_csv("keywords.csv", index=False)
-    
+
+
+def create_words_object():
+    f = open(os.path.join("results", "data", "words.txt"), "r", encoding="utf8")
+    words = f.readlines()
+    dictionary = {}
+    counter = 0
+    for word in words:
+        term = word.strip("\n")
+        print(f"processing {counter}/{len(words)}")
+        counter += 1
+        result = get_wikipedia_table_info(term)
+        if result is not None:
+            dictionary[term] = result
+        sleep(0.01)
+    with open(os.path.join("results", "data", "keywords.json"), "w", encoding="utf8") as outfile: 
+        json.dump(dictionary, outfile)
+        outfile.close()
 
 if __name__ == "__main__":
 
@@ -264,7 +282,8 @@ if __name__ == "__main__":
 
     #process_files()
 
-    parse_data()
+    #parse_data()
+    create_words_object()
 
     file_p =  open(os.path.join("results", "data", "all_cleaned.json"), "r", encoding="utf8")
     dictionary = json.load(file_p)
