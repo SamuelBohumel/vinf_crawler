@@ -182,7 +182,7 @@ def get_wikipedia_table_info(keyword):
         values = [col.get_text(strip=True) for col in columns]
         if values:
             # Assuming the first column is the key and the second column is the value
-            table_info[values[0].lower()] = values[1].lower() if len(values) > 1 else ""
+            table_info[values[0]] = values[1].lower() if len(values) > 1 else ""
 
     return table_info
 
@@ -211,22 +211,35 @@ def parse_data():
         elif key is not None:
             cleaned = re.sub(r"<.*?>", "", line)
             cleaned = re.sub('"', "'", cleaned)
-            dictionary[key]['text'] += cleaned.lower()
+            dictionary[key]['text'] += cleaned
 
     counter = 0
+    dictionary['info'] = {}
     for key, value in dictionary.items():
-        print(f"processing {counter}/{len(dictionary.items())}")
-        counter += 1
-        rake_nltk_var = Rake()
-        rake_nltk_var.extract_keywords_from_text(value['text'])
-        keyword_extracted = rake_nltk_var.get_ranked_phrases()
-        for keyword in list(set(keyword_extracted)):
-            result = get_wikipedia_table_info(keyword)
-            if result is not None:
-                dictionary[key][keyword] = result
-            sleep(0.01)
-        dictionary[key]['keywords'] = list(set(keyword_extracted))
-        all_key_words.extend(keyword_extracted)
+        try:
+            print(f"processing {counter}/{len(dictionary.items())}")
+            counter += 1
+            rake_nltk_var = Rake()
+            rake_nltk_var.extract_keywords_from_text(value['text'])
+            phrases = rake_nltk_var.get_ranked_phrases()
+            keyword_extracted = []
+            phrases = list(set(phrases))
+            for word in phrases:
+                match = re.search(word, value['text'], re.IGNORECASE)
+                if match:
+                    keyword_extracted.append(match.group())
+            print(keyword_extracted)
+            for keyword in list(set(keyword_extracted)):
+                if re.search(r'[A-Z]+', keyword):
+                    result = get_wikipedia_table_info(keyword)
+                    if result is not None:
+                        dictionary["info"][keyword] = result
+                    sleep(0.01)
+                else:
+                    dictionary["info"][keyword] = "no data"
+            all_key_words.extend(keyword_extracted)
+        except:
+            pass
     
     with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
         json.dump(dictionary, outfile)
