@@ -24,6 +24,7 @@ from time import sleep
 #     stream=sys.stdout,
 #     level=logging.INFO
 #     )
+# https://en.wikipedia.org/wiki/Astronomical_object
 
 def check_words_in_sentence(words, sentence):
     correct = 0
