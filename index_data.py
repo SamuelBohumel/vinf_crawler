@@ -61,7 +61,7 @@ class IndexFiles(object):
         t1.setIndexOptions(IndexOptions.DOCS_AND_FREQS)
 
         t2 = FieldType()
-        t2.setStored(False)
+        t2.setStored(True)
         t2.setTokenized(True)
         t2.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
 
@@ -74,7 +74,8 @@ class IndexFiles(object):
             text = data[entry]['text']  
             try:
                 doc = Document()
-                doc.add(Field(entry, text, t1))
+                doc.add(Field("name", entry, t1))
+                doc.add(Field("contents", text, t2))
                 writer.addDocument(doc)
             except:
                 print(f"Error with {entry}")    
@@ -100,36 +101,36 @@ class IndexFiles(object):
         #         writer.addDocument(doc)
                 
                 
-def run(searcher, analyzer):
-    while True:
-        print
-        print("Hit enter with no input to quit.")
-        command = input("Query:")
-        if command == '':
-            return
-
-        print
-        print("Searching for:", command)
-        query = QueryParser("contents", analyzer).parse(command)
-        scoreDocs = searcher.search(query, 50).scoreDocs
-        print("%s total matching documents." % len(scoreDocs))
-
-        for scoreDoc in scoreDocs:
-            doc = searcher.doc(scoreDoc.doc)
-            print('path:', doc.get("path"), 'name:', doc.get("name"))
-
-if __name__ == '__main__':
-
-    lucene.initVM(vmargs=['-Djava.awt.headless=true'])
-    print('lucene', lucene.VERSION)
-    start = datetime.now()
+def search_in_index(query, matches):
     base_dir = ""
-    IndexFiles("", os.path.join(base_dir, INDEX_DIR), StandardAnalyzer())
-    
     directory = NIOFSDirectory(Paths.get(os.path.join(base_dir, INDEX_DIR)))
     searcher = IndexSearcher(DirectoryReader.open(directory))
     analyzer = StandardAnalyzer()
-    run(searcher, analyzer)
+
+    if query == '':
+        return "no match", ""
+
+    query = QueryParser("contents", analyzer).parse(query)
+    scoreDocs = searcher.search(query, matches).scoreDocs
+
+    for scoreDoc in scoreDocs:
+        doc = searcher.doc(scoreDoc.doc)
+        return doc.get("name"), doc.get("contents")
+        #print('article:', doc.get("name"), 'name:', doc.get("contents"))
+
+if __name__ == '__main__':
+
+    base_dir = ""
+    print('lucene', lucene.VERSION)
+    start = datetime.now()
+    lucene.initVM(vmargs=['-Djava.awt.headless=true'])
+    #IndexFiles("", os.path.join(base_dir, INDEX_DIR), StandardAnalyzer())
+    
+
+    while True:
+        q = input()
+        r, s = search_in_index(q, 1)
+        print(r, s)
         
     end = datetime.now()
     print(end - start)
