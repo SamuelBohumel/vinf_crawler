@@ -15,8 +15,8 @@ from PIL import Image, ImageTk  # Import Pillow
 import wikipediaapi
 from bs4 import BeautifulSoup
 from time import sleep
-# nltk.download('stopwords')
-# nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('punkt')
 
 # logging.basicConfig(
 #     format='%(asctime)s - %(message)s', 
@@ -38,7 +38,17 @@ def check_words_in_sentence(words, sentence):
 
 
 
-def find_best_match(search_term, dictionary):
+def find_best_match(search_term, dictionary, keyword_info):
+    if "info:" in search_term:
+        #seach in that dictionary 
+        keyword = search_term.replace("info:", "")
+        for key, value in keyword_info.items():
+            if key.lower() == keyword.lower():
+                result_str = ""
+                for field, number in value.items():
+                    result_str += f"{field}: {number}\n"
+                return result_str, ""
+                    
     words = search_term.split(" ")
     if " " not in search_term:
         #try to find definiton:
@@ -57,21 +67,25 @@ def find_best_match(search_term, dictionary):
                 for sent in sententes:
                     if check_words_in_sentence(words, sent):
                         return sent, article
-        return "",""
+        return "", ""
 
 
-def search_keywords(dictionary, search_var, result_text, result_article):
+def search_keywords(dictionary, keyword_info, search_var, result_text, result_article):
     search_term = search_var.get()
     result_text.delete(1.0, tk.END)  # Clear previous results
 
-    result, article = find_best_match(search_term, dictionary)
-    result_text.insert(tk.END, result)
-    result_article.delete(1.0, tk.END)
-    result_article.insert(tk.END, article)
+    try:
+        result, article = find_best_match(search_term, dictionary, keyword_info)
+        result_text.insert(tk.END, result)
+        result_article.delete(1.0, tk.END)
+        result_article.insert(tk.END, article)
+    except:
+        pass
 
 
 
-def create_GUI(dictionary):
+
+def create_GUI(dictionary, keyword_info):
     offset = 0
     app = tk.Tk()
     app.title('Keyword Search App')
@@ -102,11 +116,11 @@ def create_GUI(dictionary):
     search_label.grid(row=1, column=0, padx=10, pady=(5, 0), sticky='w')
 
     search_var = tk.StringVar()
-    search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(dictionary, search_var, result_text, result_article))
+    search_var.trace('w', lambda name, index, mode, sv=search_var: search_keywords(dictionary, keyword_info, search_var, result_text, result_article))
     search_entry = ttk.Entry(app, textvariable=search_var)
     search_entry.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
 
-    search_button = ttk.Button(app, text='Next match', command=lambda: search_keywords(dictionary, search_var, result_text, result_article))
+    search_button = ttk.Button(app, text='Next match', command=lambda: search_keywords(dictionary, keyword_info, search_var, result_text, result_article))
     search_button.grid(row=2, column=1, padx=(0, 10), pady=5, sticky='ew')
 
     result_text = tk.Text(app, wrap=tk.WORD, height=10, width=40)
@@ -214,44 +228,38 @@ def parse_data():
             cleaned = re.sub('"', "'", cleaned)
             dictionary[key]['text'] += cleaned
 
-    counter = 0
-    dictionary['info'] = {}
-    for key, value in dictionary.items():
-        try:
-            print(f"processing {counter}/{len(dictionary.items())}")
-            counter += 1
-            rake_nltk_var = Rake()
-            rake_nltk_var.extract_keywords_from_text(value['text'])
-            phrases = rake_nltk_var.get_ranked_phrases()
-            keyword_extracted = []
-            phrases = list(set(phrases))
-            for word in phrases:
-                match = re.search(word, value['text'], re.IGNORECASE)
-                if match:
-                    keyword_extracted.append(match.group())
-            print(keyword_extracted)
-            for keyword in list(set(keyword_extracted)):
-                if re.search(r'[A-Z]+', keyword):
-                    result = get_wikipedia_table_info(keyword)
-                    if result is not None:
-                        dictionary["info"][keyword] = result
-                    sleep(0.01)
-                else:
-                    dictionary["info"][keyword] = "no data"
-            all_key_words.extend(keyword_extracted)
-        except:
-            pass
+    # keywords trial 1
+    # counter = 0
+    # dictionary['info'] = {}
+    # for key, value in dictionary.items():
+    #     try:
+    #         print(f"processing {counter}/{len(dictionary.items())}")
+    #         counter += 1
+    #         rake_nltk_var = Rake()
+    #         rake_nltk_var.extract_keywords_from_text(value['text'])
+    #         phrases = rake_nltk_var.get_ranked_phrases()
+    #         keyword_extracted = []
+    #         phrases = list(set(phrases))
+    #         for word in phrases:
+    #             match = re.search(word, value['text'], re.IGNORECASE)
+    #             if match:
+    #                 keyword_extracted.append(match.group())
+    #         print(keyword_extracted)
+    #         for keyword in list(set(keyword_extracted)):
+    #             if re.search(r'[A-Z]+', keyword):
+    #                 result = get_wikipedia_table_info(keyword)
+    #                 if result is not None:
+    #                     dictionary["info"][keyword] = result
+    #                 sleep(0.01)
+    #             else:
+    #                 dictionary["info"][keyword] = "no data"
+    #         all_key_words.extend(keyword_extracted)
+    #     except:
+    #         pass
     
     with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
         json.dump(dictionary, outfile)
         outfile.close()
-
-    # result = open(os.path.join("results", "data", "all_cleaned.txt"), "w", encoding="utf8")
-    # result.write(data)
-    keyword_df = pd.DataFrame(all_key_words, columns=['keyword'])
-    keyword_df = keyword_df.groupby('keyword').size().reset_index(name='count')
-    keyword_df.sort_values(by='count', ascending=False, inplace=True)
-    keyword_df.to_csv("keywords.csv", index=False)
 
 
 def create_words_object():
@@ -283,12 +291,16 @@ if __name__ == "__main__":
     #process_files()
 
     #parse_data()
-    create_words_object()
+    #create_words_object()
 
     file_p =  open(os.path.join("results", "data", "all_cleaned.json"), "r", encoding="utf8")
     dictionary = json.load(file_p)
+    file_p.close()
+    f_p = open(os.path.join("results", "data", "keywords.json"), "r", encoding="utf8")
+    keyword_info = json.load(f_p)
+    f_p.close()
 
-    create_GUI(dictionary)
+    create_GUI(dictionary, keyword_info)
     
     end = time.time()
     print(f"Duration: {(end-start)/60} minutes")
