@@ -5,3 +5,4 @@ Pillow==10.1.0
 rake_nltk==1.0.6
 Requests==2.31.0
 Wikipedia-API==0.6.0
+pyspark==3.5.0
