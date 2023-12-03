@@ -50,29 +50,24 @@ def check_words_in_sentence(words, sentence):
 
 def find_best_match(search_term, dictionary, keyword_info):
     if "info:" in search_term:
-        attr = None 
         #seach in that dictionary 
-        divided = search_term.split("|")
-        if len(divided) == 2:
-            search_term = divided[0]
-            attr = divided[1]
-        else:
-            search_term = divided[0]
-
         keyword = search_term.replace("info:", "")
         for key, value in keyword_info.items():
             if key.lower() == keyword.lower():
                 result_str = ""
                 for field, number in value.items():
                     result_str += f"{field}: {number}\n"
-                #find parameter 
-                if attr is not None:
-                    lines = result_str.split("\n")
-                    for line in lines:
-                        if attr.lower() in line.lower():
-                            return line, ""
                 return result_str, ""
                     
+
+    else:
+        for key, value in dictionary.items():
+            if search_term in key:
+                article = value['text']
+                sententes = article.split('.')
+                for sent in sententes:
+                    if check_words_in_sentence(words, sent):
+                        return sent, article
         return "", ""
 
 
@@ -89,6 +84,8 @@ def search_keywords(dictionary, keyword_info, search_var, result_text, result_ar
         result_article.insert(tk.END, article)
     except:
         pass
+
+
 
 
 def create_GUI(dictionary, keyword_info):
@@ -235,39 +232,33 @@ def parse_data():
             dictionary[key]['text'] += cleaned
 
     # keywords trial 1
-    counter = 0
-    dictionary['info'] = {}
-    for key, value in dictionary.items():
-        try:
-            print(f"processing {counter}/{len(dictionary.items())}")
-            counter += 1
-            rake_nltk_var = Rake()
-            rake_nltk_var.extract_keywords_from_text(key)
-            phrases = rake_nltk_var.get_ranked_phrases()
-            keyword_extracted = []
-            phrases = list(set(phrases))
-            dictionary[key]['keywords'] = phrases
-            # for keyword in list(set(keyword_extracted)):
-            #     if re.search(r'[A-Z]+', keyword):
-            #         result = get_wikipedia_table_info(keyword)
-            #         if result is not None:
-            #             dictionary["info"][keyword] = result
-            #         sleep(0.01)
-            #     else:
-            #         dictionary["info"][keyword] = "no data"
-            all_key_words.extend(phrases)
-        except:
-            pass
-    
-    all_key_words = list(set(all_key_words))
-    with open(os.path.join("results", "data", "all_keywords.txt"), "w", encoding="utf8") as outfile: 
-        #delete only numbers from phrases:
-        all_key_words = [word for word in all_key_words if not word.isnumeric()]
-        for word in all_key_words:
-            outfile.write(word)
-            outfile.write("\n")
-        outfile.close()
-
+    # counter = 0
+    # dictionary['info'] = {}
+    # for key, value in dictionary.items():
+    #     try:
+    #         print(f"processing {counter}/{len(dictionary.items())}")
+    #         counter += 1
+    #         rake_nltk_var = Rake()
+    #         rake_nltk_var.extract_keywords_from_text(value['text'])
+    #         phrases = rake_nltk_var.get_ranked_phrases()
+    #         keyword_extracted = []
+    #         phrases = list(set(phrases))
+    #         for word in phrases:
+    #             match = re.search(word, value['text'], re.IGNORECASE)
+    #             if match:
+    #                 keyword_extracted.append(match.group())
+    #         print(keyword_extracted)
+    #         for keyword in list(set(keyword_extracted)):
+    #             if re.search(r'[A-Z]+', keyword):
+    #                 result = get_wikipedia_table_info(keyword)
+    #                 if result is not None:
+    #                     dictionary["info"][keyword] = result
+    #                 sleep(0.01)
+    #             else:
+    #                 dictionary["info"][keyword] = "no data"
+    #         all_key_words.extend(keyword_extracted)
+    #     except:
+    #         pass
     
     with open(os.path.join("results", "data", "all_cleaned.json"), "w", encoding="utf8") as outfile: 
         json.dump(dictionary, outfile)
@@ -275,7 +266,7 @@ def parse_data():
 
 
 def create_words_object():
-    f = open(os.path.join("results", "data", "all_keywords.txt"), "r", encoding="utf8")
+    f = open(os.path.join("results", "data", "words.txt"), "r", encoding="utf8")
     words = f.readlines()
     dictionary = {}
     counter = 0

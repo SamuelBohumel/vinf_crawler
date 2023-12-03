@@ -80,7 +80,27 @@ class IndexFiles(object):
             except:
                 print(f"Error with {entry}")    
             
-               
+                
+        # for root, dirnames, filenames in os.walk(root):
+        #     for filename in filenames:
+        #         if not filename.endswith('.json'):
+        #             continue
+        #         print("adding", filename)
+
+        #         path = os.path.join(root, filename)
+        #         file = open(path, "r", encoding="utf-8")
+        #         contents = file.read()
+        #         file.close()
+        #         doc = Document()
+        #         doc.add(Field("name", filename, t1))
+        #         doc.add(Field("path", root, t1))
+        #         if len(contents) > 0:
+        #             doc.add(Field("contents", contents, t2))
+        #         else:
+        #             print("warning: no content in %s" % filename)
+        #         writer.addDocument(doc)
+                
+                
 def search_in_index(query, matches):
     base_dir = ""
     directory = NIOFSDirectory(Paths.get(os.path.join(base_dir, INDEX_DIR)))

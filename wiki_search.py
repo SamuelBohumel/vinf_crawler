@@ -1,6 +1,8 @@
 import wikipediaapi
 from bs4 import BeautifulSoup
 import requests
+import os
+import xmltodict
 
 def get_wikipedia_table_info(keyword):
     # Create a Wikipedia API object
@@ -40,7 +42,34 @@ def get_wikipedia_table_info(keyword):
     return table_info
 
 # Example usage
-keyword_to_search = "future us"
-result = get_wikipedia_table_info(keyword_to_search)
+# keyword_to_search = "nightmare"
+# result = get_wikipedia_table_info(keyword_to_search)
 
-print(result)
+# print(result)
+
+occurrences = []
+def find_all_occurrences_in_nested_dict(dictionary, target_word, current_path=[]):
+    """
+    Recursively search for all occurrences of a target word in a nested dictionary
+    and return a list of tuples containing the value and the path of keys.
+
+    Returns A list of tuples (value, path) for all occurrences of the target word.
+    """
+
+    for key, value in dictionary.items():
+        path = current_path + [key]
+        if isinstance(value, dict):
+            occurrences.extend(find_all_occurrences_in_nested_dict(value, target_word, path))
+        elif isinstance(value, str) and target_word.lower() in value.lower():
+            occurrences.append((value, path))
+    return occurrences
+
+def get_wiki_from_dump():
+    with open(os.path.join("results", "data", "wiki_dump.xml"), 'r', encoding='utf-8') as file:
+        my_xml = file.read()
+        dictionary = xmltodict.parse(my_xml, encoding='utf-8', process_namespaces=False, namespace_separator=':') 
+        print("Parsed")
+        finds = find_all_occurrences_in_nested_dict(dictionary, "1955", [])
+        print(finds)
+
+get_wiki_from_dump()
