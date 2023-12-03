@@ -4,10 +4,23 @@ import os
 def process_text_file(file_path):
     # Your processing logic for each text file goes here
     # Example: Read the text file and count the number of lines
-    with open(file_path, 'r', encoding='utf8') as file:
-        lines_count = len(file.readlines())
 
-    return file_path, lines_count
+    file_p = open(file_path, "r", encoding="utf8")
+    try:
+        data = file_p.read()
+    except UnicodeDecodeError as error:
+        logging.error(exc_info=True)
+        continue
+    file_p.close()
+    found = re.findall(r'<p>.*?</p>', data, re.DOTALL)
+    article_name = filename.strip(".txt")
+    result_file_p.write(f'---------- {filename} ----------\n')
+
+    for f in found:
+        result_file_p.write(re.sub(r'<p>|</p>','', f))
+        result_file_p.write('\n')
+    
+    logging.info(f"parsing file {filename}")
 
 def main():
     # Initialize Spark session
