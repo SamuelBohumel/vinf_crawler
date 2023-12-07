@@ -64,12 +64,12 @@ def find_all_occurrences_in_nested_dict(dictionary, target_word, current_path=[]
             occurrences.append((value, path))
     return occurrences
 
-def get_wiki_from_dump():
+def get_wiki_from_dump(search_term):
     with open(os.path.join("results", "data", "wiki_dump.xml"), 'r', encoding='utf-8') as file:
         my_xml = file.read()
         dictionary = xmltodict.parse(my_xml, encoding='utf-8', process_namespaces=False, namespace_separator=':') 
         print("Parsed")
-        finds = find_all_occurrences_in_nested_dict(dictionary, "1955", [])
+        finds = find_all_occurrences_in_nested_dict(dictionary, search_term, [])
         print(finds)
 
 get_wiki_from_dump()
